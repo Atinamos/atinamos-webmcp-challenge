@@ -1,95 +1,91 @@
 # Challenge history — existing product vs WebMCP extension
 
-This document exists so reviewers can distinguish the pre-existing Atinamos Agent Shop from work added for the OpenAI WebMCP Challenge.
+This document distinguishes the pre-existing Atinamos Agent Shop from work added during the OpenAI WebMCP Challenge.
 
 ## Pre-existing application
 
-The Atinamos Agent Shop existed before the challenge. The WebMCP extension was started from the existing private production branch at commit:
+The Agent Shop existed before the challenge. The WebMCP extension started from private production commit:
 
 `edb2a7e87a7f68d2fb6c1eebdd6b7121d8e1e70c`
 
-Before WebMCP work began, the application already provided:
+Before challenge work the application already provided the human storefront, live Render Check / Buyer Check / JSON Validate & Repair / Technical SEO Crawl services, `/v1/catalog`, OpenAPI, external `/mcp`, x402-protected paid routes, job polling, free Market Search, machine-discovery metadata and service evidence infrastructure.
 
-- the human storefront at `https://agent.atinamos.co.uk/`;
-- live Render Check, Buyer Check, JSON Validate / Repair and Technical SEO Crawl services;
-- the `/v1/catalog` machine-readable catalogue;
-- OpenAPI;
-- external MCP at `/mcp`;
-- x402-protected paid routes;
-- asynchronous job polling;
-- free observed-service Market Search;
-- machine-discovery metadata such as `llms.txt`;
-- service execution/evidence infrastructure.
+Those capabilities are pre-existing hosted dependencies and are not claimed as challenge-period inventions.
 
-Those pre-existing capabilities are hosted dependencies of the challenge extension and are not claimed as challenge-period inventions.
+## 29 August 2026 — initial WebMCP extension
 
-## Challenge-period WebMCP work
+Challenge-period work added:
 
-The WebMCP implementation was developed on 29 August 2026 in a sequence of isolated branches and pull requests before being merged into the live Agent Shop branch.
-
-### Initial WebMCP integration
-
-Challenge work introduced:
-
-- progressive detection of `document.modelContext` (with compatibility fallback);
-- browser-delivered WebMCP JavaScript;
-- seven `registerTool(...)` site tools;
-- explicit read-only and untrusted-content annotations;
-- a request-starting purchase tool that deliberately does not sign, fund, approve or automatically retry an x402 payment;
+- progressive detection of `document.modelContext`;
+- browser-delivered WebMCP site tools;
+- explicit read-only / request-starting / untrusted-content annotations;
+- safe purchase initiation that reaches the real x402 HTTP 402 boundary without signing/funding payment;
 - regression tests and JavaScript syntax checks.
 
-The initial live merge was deployed as Agent Shop merge commit `e841cba` (short form), after the WebMCP regression suite passed.
+The human-facing **Agent Activity** layer then added grouped request/search cards, scrollable session history, catalogue discovery folded into meaningful requests, and visible safe-stop/payment-boundary status.
 
-### Human-visible Agent Activity
+Live ChatGPT browser testing proved service discovery, quoting, Market Search and a genuine Render Check 402 boundary.
 
-The next challenge-period extension added a human-visible panel so a person watching the page can see what the browser agent is doing.
+## 30 August 2026 — human-approved x402 continuation
 
-The sequence of challenge refinements included:
+The challenge extension was meaningfully extended again after the initial safe-stop proof.
 
-- `a700fb0` — initial Agent Activity panel;
-- `3d8d2eb` — separate request/search cards rather than one flat event stream;
-- `c1c9fae` — scrollable request history, request/search references and cleaner grouping;
-- `fd5f22b` — session history persistence across page reloads using `sessionStorage`;
-- `9c5e711` — provisional catalogue discovery folded into the next meaningful action;
-- `0a70817` — final footer copy: `Session activity only. Payment approval remains with the buyer.`
+A separate browser proof first established that a human-controlled Base smart wallet could satisfy the exact same x402 challenge as an agent buyer. A first attempt correctly failed because buyer and seller were the same wallet (`self_send_not_allowed`). A separate buyer wallet then completed the flow:
 
-Each production change was regression-tested before merge.
+- initial `/agent/json-repair` request → HTTP 402;
+- Coinbase CDP `/x402/verify` → HTTP 200;
+- Coinbase CDP `/x402/settle` → HTTP 200;
+- paid `/agent/json-repair` retry → HTTP 200;
+- deterministic repaired JSON returned.
 
-## Live validation performed
+The proven mechanism was then integrated into the normal WebMCP Agent Shop experience rather than left as a proof page.
 
-The live site was opened in ChatGPT's built-in WebMCP-capable browser after deployment.
+### Added in the integrated human-payment flow
 
-Observed live behaviour:
+- page-session `request_id` for paid WebMCP requests;
+- eighth WebMCP tool, read-only `get_request_status`;
+- Agent Activity **Pay with Base** action after genuine HTTP 402;
+- explicit human confirmation and buyer-controlled Base wallet signing;
+- buyer=seller wallet protection before signing;
+- x402 verify/settle/retry using the existing paid endpoint;
+- result returned to ChatGPT through the read-only request-status tool;
+- no wallet signer or x402 payment client inside the WebMCP tool bundle itself.
 
-1. ChatGPT detected **7 site tools**: 6 read tools and 1 request-starting/write tool.
-2. ChatGPT used the live site tools to read the service catalogue and current prices.
-3. ChatGPT used Market Search for `atinamos`; the action completed without payment and was shown in its own activity card.
-4. ChatGPT initiated Render Check for `https://example.com`.
-5. The live endpoint returned **HTTP 402 Payment Required** at **0.25 USDC**.
-6. ChatGPT stopped at the payment boundary as instructed.
-7. No payment was approved, signed, funded or automatically retried by WebMCP.
-8. The Agent Activity panel displayed the request as **Stopped safely**.
-9. Technical SEO Crawl was also tested to the same safe 402 boundary.
+### Live ChatGPT validation
+
+The integrated flow was then proven in ChatGPT's built-in WebMCP browser:
+
+1. ChatGPT selected JSON Validate / Repair through site tools.
+2. It quoted **0.005 USDC**.
+3. It started the request and received the genuine 402/payment requirement plus request ID.
+4. Agent Activity displayed **Payment approval required**.
+5. The human clicked **Pay with Base** and connected a separate buyer-controlled wallet.
+6. Payment verified and settled on Base.
+7. Agent Activity displayed **Payment settled** and **Service completed**.
+8. ChatGPT read the completed request and returned the repaired JSON.
+
+This proves the challenge's human-agent interaction model without giving the agent custody of payment authority.
+
+## Human result/progress UX
+
+A final challenge-period polish layer keeps Agent Activity focused on awareness, authority and status rather than turning it into a report viewer.
+
+Completed work can offer **View result**, asynchronous work **View progress**, and structured failures **View failure details**. The separate same-origin result page is noindex/session-bound, can follow existing async job status, and provides JSON download.
+
+This page is deliberately optional human UX. Agents continue consuming structured output through WebMCP/API tools and do not scrape the human report page.
 
 ## Public challenge repository
 
-This repository is a challenge-safe publication of the WebMCP extension. The broader production repository remains private because it contains unrelated implementation and operational material that is not required to review the WebMCP challenge work.
+This repository publishes the challenge-safe extension while the broader production repository remains private.
 
 Published here:
 
-- WebMCP site-tool registrations;
-- Agent Activity implementation;
-- progressive loader reference integration;
+- eight WebMCP site-tool registrations;
+- human-visible Agent Activity and explicit Base payment continuation;
+- human result/progress/failure view;
+- progressive-loader reference integration;
 - public regression checks;
-- architecture and judge test instructions;
-- challenge history and licensing.
+- architecture, testing instructions and dated challenge history;
+- MIT licence.
 
-Not published here:
-
-- production credentials or environment values;
-- wallet/private-key material;
-- private evidence data;
-- unrelated internal worker/operations code;
-- unrelated pre-existing product source.
-
-The live public APIs and storefront are the pre-existing hosted dependencies against which this extension operates.
+Not published here are production credentials, private keys, private evidence data, unrelated operations code or unrelated pre-existing product source.
