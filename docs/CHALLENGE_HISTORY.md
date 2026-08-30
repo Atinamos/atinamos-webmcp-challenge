@@ -53,7 +53,7 @@ The proven mechanism was then integrated into the normal WebMCP Agent Shop exper
 
 ### Live ChatGPT validation
 
-The integrated flow was then proven in ChatGPT's built-in WebMCP browser:
+The integrated flow was proven in ChatGPT's built-in WebMCP browser:
 
 1. ChatGPT selected JSON Validate / Repair through site tools.
 2. It quoted **0.005 USDC**.
@@ -65,6 +65,12 @@ The integrated flow was then proven in ChatGPT's built-in WebMCP browser:
 8. ChatGPT read the completed request and returned the repaired JSON.
 
 This proves the challenge's human-agent interaction model without giving the agent custody of payment authority.
+
+### Browser crash / reload recovery found during live testing
+
+A later live run exposed a useful edge case in ChatGPT's built-in browser. The paid JSON service completed and Agent Activity showed **Payment settled / Service completed**, but the browser page then crashed/reloaded. The activity cards survived because they were already session-persisted, while the underlying `wr-...` request result had existed only in an in-memory JavaScript `Map`. ChatGPT therefore received `not_found` when it called `get_request_status` after the reload.
+
+The challenge implementation was hardened so safe request/result records are now mirrored into `sessionStorage` and exposed through the same request-store contract. After a page reload, `get_request_status` can recover the completed structured result from the page-session mirror. This persistence contains only the safe request view/result; it adds no wallet signing or payment authority.
 
 ## Human result/progress UX
 
@@ -82,6 +88,7 @@ Published here:
 
 - eight WebMCP site-tool registrations;
 - human-visible Agent Activity and explicit Base payment continuation;
+- reload-safe page-session request/result recovery;
 - human result/progress/failure view;
 - progressive-loader reference integration;
 - public regression checks;
