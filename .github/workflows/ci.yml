@@ -10,19 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install pytest
         run: python -m pip install pytest
-
       - name: Run public source regression checks
         run: pytest -q
-
-      - name: Check WebMCP tool JavaScript syntax
-        run: node --check src/agent-shop-webmcp.js
-
-      - name: Check activity JavaScript syntax
-        run: node --check src/agent-shop-webmcp-activity.js
+      - name: Check published JavaScript syntax
+        run: |
+          node --check src/agent-shop-webmcp.js
+          node --check src/agent-shop-webmcp-activity.js
+          node --check src/agent-shop-result-actions.js
+          node --check src/agent-shop-result-view.js
