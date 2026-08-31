@@ -2,11 +2,46 @@
 
 **Live app:** https://agent.atinamos.co.uk/  
 **Challenge:** OpenAI WebMCP Challenge 2026  
-**Status:** live WebMCP implementation on the existing Atinamos Agent Shop
+**Licence:** MIT  
+**Local runnable harness:** [`RUN_LOCAL.md`](RUN_LOCAL.md)
 
-Atinamos Agent Shop is an existing machine-service storefront extended during the WebMCP Challenge so browser agents can discover, quote, request and consume services directly from the same live page a human sees.
+Atinamos Agent Shop is an existing machine-service storefront that was meaningfully extended during the WebMCP Challenge so browser agents can discover, quote and request services directly from the same live page a human sees.
 
-The challenge extension now demonstrates a complete human+agent commerce loop: WebMCP requests the service and stops at the real x402 payment boundary; the human explicitly approves payment with their own Base wallet; the existing x402 endpoint verifies/settles and executes; then the agent reads the structured result through WebMCP.
+The challenge extension demonstrates a complete human+agent commerce loop: WebMCP requests a service and stops at the HTTP 402/x402 boundary; the human explicitly approves payment with a buyer-controlled Base wallet; the existing paid endpoint verifies, settles and executes; then the agent reads the structured result through WebMCP.
+
+WebMCP never holds a wallet key or silently spends funds.
+
+## What was pre-existing
+
+Before the challenge the Agent Shop already had:
+
+- a human storefront;
+- `/v1/catalog`;
+- REST/OpenAPI;
+- an external `/mcp` endpoint;
+- x402-protected paid routes;
+- job polling and evidence infrastructure;
+- Market Search;
+- live Render Check, Buyer Check, JSON Validate / Repair and Technical SEO Crawl services.
+
+Those capabilities are not claimed as challenge-period inventions.
+
+See [`docs/CHALLENGE_HISTORY.md`](docs/CHALLENGE_HISTORY.md) for the dated baseline and challenge history.
+
+## What was added during the challenge
+
+- browser-native `document.modelContext.registerTool(...)` integration;
+- eight WebMCP site tools;
+- explicit read-only, request-starting and untrusted-content annotations;
+- request IDs and read-only result/status retrieval;
+- Agent Activity shared by the human and browser agent;
+- safe HTTP 402 boundary with no WebMCP signing or funding;
+- explicit human **Pay with Base** continuation;
+- buyer=seller wallet protection;
+- reload/restart recovery for safe request state;
+- dedicated human result/progress/failure view;
+- regression tests and CI;
+- an independently runnable public reference harness.
 
 ## Live WebMCP tools
 
@@ -14,94 +49,98 @@ The challenge extension now demonstrates a complete human+agent commerce loop: W
 |---|---|---|
 | `list_services` | Read-only | Read live catalogue, prices and contracts. |
 | `get_service_details` | Read-only | Read one exact service contract. |
-| `get_quote` | Read-only | Read current price and payment boundary without starting work. |
-| `search_market` | Read-only, untrusted output | Search external machine services observed by Atinamos. |
+| `get_quote` | Read-only | Read current price and payment boundary. |
+| `search_market` | Read-only, untrusted output | Search observed external machine services. |
 | `get_market_service` | Read-only, untrusted output | Read one observed external service record. |
-| `check_purchase_status` | Read-only | Poll an asynchronous Atinamos job/result. |
-| `get_request_status` | Read-only | Read the page-session result/status after human payment action. |
-| `begin_service_purchase` | Request-starting | Submit service input and obtain the real x402 requirement. It cannot sign, fund, approve or automatically retry payment. |
+| `check_purchase_status` | Read-only | Poll an asynchronous job/result. |
+| `get_request_status` | Read-only | Read request state/result after human action. |
+| `begin_service_purchase` | Request-starting | Submit service input and obtain the real HTTP 402/x402 requirement. It cannot sign, fund or approve payment. |
 
-## Proven paid flow
+## Proven live paid flow
 
-On 30 August 2026 the complete JSON Validate / Repair flow was proven in ChatGPT's built-in WebMCP browser:
+The JSON Validate / Repair flow was proven in ChatGPT's in-app WebMCP browser:
 
 1. ChatGPT discovered the site's WebMCP tools.
-2. It selected JSON Validate / Repair and quoted **0.005 USDC**.
-3. `begin_service_purchase` submitted broken JSON and received the real HTTP 402/x402 requirement.
-4. The same webpage's **Agent Activity** panel showed **Payment approval required** and **Pay with Base**.
-5. A human connected a separate buyer-controlled Base wallet and explicitly approved the payment.
-6. Coinbase CDP x402 verification returned 200 and settlement returned 200.
-7. The existing `/agent/json-repair` endpoint returned HTTP 200 with a deterministic repaired result.
+2. It quoted JSON Validate / Repair at **0.005 USDC**.
+3. `begin_service_purchase` submitted malformed JSON and received HTTP 402.
+4. Agent Activity showed **Payment approval required**.
+5. The human clicked **Pay with Base** and connected a buyer-controlled wallet.
+6. Coinbase CDP x402 verification and settlement returned HTTP 200.
+7. `/agent/json-repair` returned HTTP 200 with deterministic repaired JSON.
 8. Agent Activity showed **Payment settled** and **Service completed**.
-9. ChatGPT read the completed request through the read-only status path and returned the repaired JSON.
+9. The structured result was available to the agent and the human result page.
 
-WebMCP never held a wallet key or silently spent funds.
+The public challenge video shows this live flow.
 
-## Human + agent experience
+## Run the project locally
 
-The ordinary storefront progressively adds an **Agent Activity** panel only in a WebMCP-capable browser. It shows service discovery, request start, payment boundary, human wallet approval, settlement and completion.
+The repository now includes a small public reference Agent Shop under [`demo/`](demo/). It directly serves the published `src/agent-shop-webmcp.js` tool bundle and provides the minimum catalogue/service contracts needed to exercise the challenge interaction independently.
 
-The activity panel is intentionally not a report viewer. After work completes it can offer a human **View result**, **View progress**, or **View failure details** action that opens a separate same-origin, noindex result page with structured evidence and JSON download.
-
-That result page is optional human UX. **Agents do not scrape or depend on it.** They consume the structured result directly through `get_request_status`, `check_purchase_status`, and the existing machine APIs.
-
-```text
-ChatGPT / browser agent
-        |
-        | WebMCP begin_service_purchase
-        v
-real Atinamos paid endpoint
-        |
-        v
-HTTP 402 / x402 requirement
-        |
-        +----> agent receives payment_required + request_id
-        |
-        +----> Agent Activity: Pay with Base
-                         |
-                    HUMAN approval
-                         |
-                    Base wallet signer
-                         |
-                    x402 paid retry
-                         |
-                 verify + settle + execute
-                         |
-            +------------+-------------+
-            |                          |
-            v                          v
-  get_request_status()          View result/progress
-  structured agent result       human report/download
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r demo/requirements.txt
+python -m uvicorn demo.app:app --host 127.0.0.1 --port 8000
 ```
+
+Open `http://127.0.0.1:8000/` in ChatGPT's in-app browser, or Chrome 149+ with WebMCP enabled.
+
+The local harness reproduces:
+
+**WebMCP request → HTTP 402 → WebMCP stops → visible human approval → deterministic service execution → structured result**.
+
+The local human button is deliberately labelled **Approve local demo continuation**. It does **not** pretend to be a blockchain payment. Real Base/x402 verification and settlement require the existing production integration and are demonstrated by the submitted live app and video.
+
+See [`RUN_LOCAL.md`](RUN_LOCAL.md) and [`demo/README.md`](demo/README.md) for exact test prompts and expected behaviour.
 
 ## Why WebMCP fits
 
-Before WebMCP an AI browsing the storefront could read HTML, use the separate external MCP, or call documented APIs if independently configured. WebMCP lets the website itself expose deterministic actions directly to the browser agent on the same page.
+Before WebMCP, an AI browsing the storefront could read HTML, use the separately configured MCP endpoint, or call documented APIs if it already knew about them.
 
-The agent no longer needs to infer service contracts from visual cards. The site tells it exactly which services exist, what they cost, which inputs they require, what fulfilment to expect, which third-party text is untrusted, and where financial authority begins.
+With WebMCP, the website itself exposes deterministic actions. The agent can discover the current service catalogue, exact price, required inputs and fulfilment contract without inferring them from visual cards.
 
 The human enters only where human authority is appropriate: approving payment and optionally inspecting the result.
 
-## Existing product vs challenge work
+## Human / agent authority boundary
 
-### Pre-existing
+```text
+browser agent
+    |
+    | begin_service_purchase
+    v
+paid service endpoint
+    |
+    v
+HTTP 402 / x402 required
+    |
+    +---- agent stops and receives request_id
+    |
+    +---- Agent Activity shows human payment action
+                         |
+                    HUMAN approval
+                         |
+                    buyer wallet
+                         |
+                    verify + settle
+                         |
+                    service executes
+                         |
+              +----------+----------+
+              |                     |
+              v                     v
+       structured agent result   human result page
+```
 
-Before the challenge the Agent Shop already had its human storefront, `/v1/catalog`, OpenAPI, external `/mcp`, x402 paid routes, job polling, free Market Search, machine-discovery metadata, evidence infrastructure, and live Render Check, Buyer Check, JSON Validate / Repair and Technical SEO Crawl services.
+Security properties:
 
-### Added during the challenge
-
-- browser-native `document.modelContext.registerTool(...)` integration;
-- eight live site tools;
-- explicit read-only/request-starting/untrusted-content annotations;
-- page-session request IDs and read-only result retrieval;
-- Agent Activity history shared by human and agent;
-- safe HTTP 402 boundary with no WebMCP signing;
-- explicit human **Pay with Base** continuation using a buyer-controlled wallet;
-- buyer=seller self-send protection;
-- human result/progress/failure view with JSON download while preserving agent-first structured output;
-- progressive enhancement, regression tests and CI.
-
-See [`docs/CHALLENGE_HISTORY.md`](docs/CHALLENGE_HISTORY.md) for the dated before/after record.
+- WebMCP is not a wallet.
+- No private key or seed phrase is handled by the WebMCP tool bundle.
+- `begin_service_purchase` cannot approve, sign, fund or automatically retry payment.
+- Human payment requires a visible action and wallet approval.
+- Buyer=seller self-payment is blocked before signing.
+- A quote or HTTP 402 is never treated as proof of execution.
+- Third-party registry text is marked as untrusted.
 
 ## Repository layout
 
@@ -109,13 +148,23 @@ See [`docs/CHALLENGE_HISTORY.md`](docs/CHALLENGE_HISTORY.md) for the dated befor
 src/
   agent-shop-webmcp.js
   agent-shop-webmcp-activity.js
+  agent-shop-session-durability.js
+  agent-shop-payment-resume.js
   agent-shop-result-actions.js
   agent-shop-result-view.html
   agent-shop-result-view.js
 integration/
   webmcp_site_tools.py
+demo/
+  app.py
+  index.html
+  demo-activity.js
+  requirements.txt
+  README.md
 tests/
   test_public_source.py
+  test_request_persistence.py
+  test_demo_harness.py
 docs/
   ARCHITECTURE.md
   CHALLENGE_HISTORY.md
@@ -123,36 +172,30 @@ docs/
   HUMAN_PAYMENT_AND_RESULTS.md
 .github/workflows/
   ci.yml
+RUN_LOCAL.md
 LICENSE
 ```
 
-The production backend remains a pre-existing hosted dependency and is not republished wholesale. This repository contains the challenge extension and integration/test material needed to understand and reproduce the WebMCP layer against the public Agent Shop interfaces. It contains no production secrets, private keys, wallet credentials or unrelated private systems.
+The broader production backend remains a pre-existing hosted dependency and is not republished wholesale. The public `demo/` harness supplies a runnable reference implementation of the challenge-facing catalogue, HTTP 402 boundary, human authority step and deterministic JSON service so the WebMCP extension can be installed and exercised from this repository without production credentials.
 
-## Judge test
+No production secrets, private keys, wallet credentials or unrelated private systems are included.
 
-Open https://agent.atinamos.co.uk/ in ChatGPT's in-app WebMCP browser and ask:
+## Judge test — live app
 
-> Using this website's tools, repair this JSON: `{foo: 'bar', active: true,}`. Tell me the price first. If payment is required, start the request but do not make or approve payment yourself.
+Open https://agent.atinamos.co.uk/ in ChatGPT's in-app browser.
 
-Expected: ChatGPT quotes **0.005 USDC**, WebMCP reaches HTTP 402, and Agent Activity offers the human-controlled **Pay with Base** continuation. After a human approves payment, ask ChatGPT to check the request status and give the result. It should receive the repaired JSON through the read-only site tool.
+No-spend quote:
 
-For a no-spend test:
+> Use the Atinamos-Agent service quote site tool for json-repair. Return the service name, price and required input.
 
-> Find Render Check and tell me how much it costs. Do not buy anything. Use the site's tools.
+Paid-boundary test:
 
-See [`docs/JUDGE_TESTING.md`](docs/JUDGE_TESTING.md) for the full test sequence.
+> Use the Atinamos-Agent Begin Atinamos service purchase site tool for json-repair with input {"json":"{'name': 'Atinamos', 'price': 0.005,}","mode":"repair"}. Stop when human payment approval is required.
 
-## Security boundary
+Expected: ChatGPT reaches HTTP 402 and stops. Agent Activity offers the explicit human-controlled **Pay with Base** action. No payment occurs unless the human approves it.
 
-- WebMCP itself is not a wallet.
-- No private key or seed phrase is handled by the site.
-- `begin_service_purchase` cannot approve, sign, fund or automatically retry payment.
-- Human payment requires a visible action and wallet approval.
-- Buyer=seller wallet is blocked before signing.
-- A quote or 402 is never treated as proof of execution.
-- Third-party registry text is marked as untrusted.
-- Human result pages are session-bound and optional; machine consumers use structured tools/APIs.
+For the full testing sequence see [`docs/JUDGE_TESTING.md`](docs/JUDGE_TESTING.md).
 
 ## Licence
 
-The WebMCP challenge extension in this repository is released under the MIT License. See [`LICENSE`](LICENSE).
+The challenge extension and public reference harness in this repository are released under the MIT License. See [`LICENSE`](LICENSE).
