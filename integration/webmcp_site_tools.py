@@ -1,47 +1,49 @@
 """Reference progressive WebMCP integration used by the Atinamos Agent Shop.
 
-This public challenge copy shows how the existing human storefront conditionally
-loads WebMCP activity, human result actions and the tool bundle when ModelContext
-exists. It intentionally contains no production secrets, payment configuration,
-worker controls, or private backend implementation.
+This public challenge copy shows the production loading order without exposing
+private backend code or configuration. The WebMCP tool bundle is the critical
+path; optional human activity/recovery helpers load only after tool registration.
 """
 
 from pathlib import Path
 
 WEBMCP_SCRIPT_URL = "/webmcp/agent-shop-webmcp.js"
+WEBMCP_DURABILITY_SCRIPT_URL = "/webmcp/agent-shop-session-durability.js"
+WEBMCP_PAYMENT_RESUME_SCRIPT_URL = "/webmcp/agent-shop-payment-resume.js"
 WEBMCP_ACTIVITY_SCRIPT_URL = "/webmcp/agent-shop-webmcp-activity.js"
 WEBMCP_RESULT_ACTIONS_SCRIPT_URL = "/webmcp/agent-shop-result-actions.js"
 WEBMCP_RESULT_VIEW_SCRIPT_URL = "/webmcp/agent-shop-result-view.js"
 WEBMCP_RESULT_VIEW_URL = "/webmcp-result"
 
-WEBMCP_SCRIPT_PATH = Path("src/agent-shop-webmcp.js")
-WEBMCP_ACTIVITY_SCRIPT_PATH = Path("src/agent-shop-webmcp-activity.js")
-WEBMCP_RESULT_ACTIONS_SCRIPT_PATH = Path("src/agent-shop-result-actions.js")
-WEBMCP_RESULT_VIEW_SCRIPT_PATH = Path("src/agent-shop-result-view.js")
-WEBMCP_RESULT_VIEW_PATH = Path("src/agent-shop-result-view.html")
+PUBLIC = Path("src")
 
 WEBMCP_LOADER = f"""<script data-atinamos-webmcp-loader>
 (() => {{
   const modelContext = document.modelContext || navigator.modelContext;
   if (!modelContext || typeof modelContext.registerTool !== "function") return;
 
-  const toolsScript = document.createElement("script");
-  toolsScript.src = "{WEBMCP_SCRIPT_URL}";
-  toolsScript.defer = true;
+  const appendScript = (src, datasetName, onload, onerror) => {{
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = false;
+    if (datasetName) script.dataset[datasetName] = "true";
+    if (onload) script.addEventListener("load", onload, {{ once: true }});
+    if (onerror) script.addEventListener("error", onerror, {{ once: true }});
+    document.head.appendChild(script);
+  }};
 
-  const resultActionsScript = document.createElement("script");
-  resultActionsScript.src = "{WEBMCP_RESULT_ACTIONS_SCRIPT_URL}";
-  resultActionsScript.defer = true;
+  const loadOptionalUi = () => {{
+    appendScript("{WEBMCP_DURABILITY_SCRIPT_URL}", "atinamosWebmcpDurability", () => {{
+      appendScript("{WEBMCP_PAYMENT_RESUME_SCRIPT_URL}", "atinamosWebmcpPaymentResume", () => {{
+        appendScript("{WEBMCP_ACTIVITY_SCRIPT_URL}", "atinamosWebmcpActivity", () => {{
+          appendScript("{WEBMCP_RESULT_ACTIONS_SCRIPT_URL}", "atinamosWebmcpResults");
+        }});
+      }}, () => appendScript("{WEBMCP_ACTIVITY_SCRIPT_URL}", "atinamosWebmcpActivity"));
+    }}, () => appendScript("{WEBMCP_ACTIVITY_SCRIPT_URL}", "atinamosWebmcpActivity"));
+  }};
 
-  const activityScript = document.createElement("script");
-  activityScript.src = "{WEBMCP_ACTIVITY_SCRIPT_URL}";
-  activityScript.defer = true;
-  activityScript.addEventListener("load", () => {{
-    document.head.appendChild(resultActionsScript);
-    document.head.appendChild(toolsScript);
-  }});
-  activityScript.addEventListener("error", () => document.head.appendChild(toolsScript));
-  document.head.appendChild(activityScript);
+  // Critical path: expose site tools before any optional UI/recovery helper.
+  appendScript("{WEBMCP_SCRIPT_URL}", "atinamosWebmcp", loadOptionalUi, loadOptionalUi);
 }})();
 </script>"""
 
@@ -55,7 +57,5 @@ def with_webmcp_loader(html: str) -> str:
     return f"{html}\n{WEBMCP_LOADER}\n"
 
 
-# The production FastAPI integration additionally serves WEBMCP_RESULT_VIEW_URL
-# as a noindex/no-store same-origin page. It is intentionally human-facing and
-# session-bound; agents continue to consume structured results through WebMCP/API
-# rather than scraping the result page.
+# Production additionally serves /webmcp-result as a same-origin noindex page.
+# Agents consume structured results through WebMCP/API; the result page is human UX.
