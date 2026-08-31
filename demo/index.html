@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Atinamos WebMCP Reference Harness</title>
+  <style>
+    body{font-family:system-ui,sans-serif;background:#081120;color:#eef4ff;margin:0;padding:40px}
+    main{max-width:980px;margin:auto}.card,.panel{background:#111c30;border:1px solid #2a3a56;border-radius:14px;padding:20px;margin:18px 0}
+    code,pre{background:#07101d;border-radius:8px;padding:3px 6px}button{background:#d6a84f;color:#081120;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .muted{color:#aebbd0}.ok{color:#5fe39a}.warn{color:#f1c45d}pre{padding:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+  </style>
+</head>
+<body>
+<main>
+  <p class="muted">ATINAMOS · WEBMCP CHALLENGE · PUBLIC REFERENCE HARNESS</p>
+  <h1>Agent Shop local demo</h1>
+  <p>This is the independently runnable challenge harness. It uses the same published WebMCP tool bundle as the live Agent Shop, but replaces the production Base/x402 settlement with an explicit local human approval step.</p>
+
+  <section class="card">
+    <h2>JSON Validate / Repair</h2>
+    <p><strong>0.005 USDC</strong> · deterministic demo service</p>
+    <p>In a WebMCP-capable browser, ask the agent to quote <code>json-repair</code>, then begin the purchase with malformed JSON. The first request returns HTTP 402 and stops.</p>
+  </section>
+
+  <section class="panel" id="demo-activity">
+    <h2>Local Agent Activity</h2>
+    <p id="state" class="muted">Waiting for a WebMCP paid request.</p>
+    <div id="actions"></div>
+    <pre id="result" hidden></pre>
+  </section>
+
+  <section class="card">
+    <h3>What is simulated here?</h3>
+    <p>The HTTP 402 boundary and human/agent authority split are real local behaviour. The button below the 402 is a <strong>demo approval</strong>, not a blockchain payment. The submitted live URL demonstrates the real Base/x402 payment flow.</p>
+  </section>
+</main>
+<script src="/demo/demo-activity.js"></script>
+<script src="/webmcp/agent-shop-webmcp.js"></script>
+</body>
+</html>
