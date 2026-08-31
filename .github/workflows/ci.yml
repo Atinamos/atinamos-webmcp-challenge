@@ -18,7 +18,7 @@ jobs:
           python -m pip install pytest
           python -m pip install -r demo/requirements.txt
       - name: Run public source and runnable-harness regression checks
-        run: pytest -q
+        run: PYTHONPATH=. pytest -q
       - name: Check published JavaScript syntax
         run: |
           node --check src/agent-shop-webmcp.js
