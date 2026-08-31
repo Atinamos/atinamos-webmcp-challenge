@@ -6,6 +6,8 @@ ACTIVITY = (ROOT / "src" / "agent-shop-webmcp-activity.js").read_text(encoding="
 RESULT_ACTIONS = (ROOT / "src" / "agent-shop-result-actions.js").read_text(encoding="utf-8")
 RESULT_VIEW = (ROOT / "src" / "agent-shop-result-view.js").read_text(encoding="utf-8")
 RESULT_HTML = (ROOT / "src" / "agent-shop-result-view.html").read_text(encoding="utf-8")
+DURABILITY = (ROOT / "src" / "agent-shop-session-durability.js").read_text(encoding="utf-8")
+PAYMENT_RESUME = (ROOT / "src" / "agent-shop-payment-resume.js").read_text(encoding="utf-8")
 LOADER = (ROOT / "integration" / "webmcp_site_tools.py").read_text(encoding="utf-8")
 
 
@@ -84,9 +86,20 @@ def test_human_result_page_can_poll_and_download_json() -> None:
     assert "new Blob" in RESULT_VIEW
 
 
-def test_progressive_loader_installs_activity_results_then_tools() -> None:
+def test_progressive_loader_registers_tools_before_optional_ui_helpers() -> None:
     assert "document.modelContext || navigator.modelContext" in LOADER
-    assert "activityScript.addEventListener" in LOADER
-    assert "resultActionsScript" in LOADER
-    assert "document.head.appendChild(toolsScript)" in LOADER
+    assert "const loadOptionalUi" in LOADER
+    assert 'appendScript("{WEBMCP_SCRIPT_URL}", "atinamosWebmcp", loadOptionalUi, loadOptionalUi)' in LOADER
+    assert "Critical path: expose site tools before any optional UI/recovery helper" in LOADER
+    assert "WEBMCP_DURABILITY_SCRIPT_URL" in LOADER
+    assert "WEBMCP_PAYMENT_RESUME_SCRIPT_URL" in LOADER
+    assert "WEBMCP_ACTIVITY_SCRIPT_URL" in LOADER
+    assert "WEBMCP_RESULT_ACTIONS_SCRIPT_URL" in LOADER
     assert "data-atinamos-webmcp-loader" in LOADER
+
+
+def test_recovery_helpers_do_not_gain_payment_authority() -> None:
+    for source in (DURABILITY, PAYMENT_RESUME, RESULT_ACTIONS):
+        assert "privateKey" not in source
+        assert "seed phrase" not in source.lower()
+        assert "eth_signTypedData_v4" not in source
